@@ -1,0 +1,10 @@
+# GASプロジェクト設定（clasp使用時）
+.clasp.json
+.claspignore
+
+# 環境変数・シークレット
+.env
+secrets.json
+
+# OS
+.DS_Store
