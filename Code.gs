@@ -5,22 +5,23 @@
 // スプレッドシートID（URLの /d/XXXX/edit の XXXX 部分）
 // → PropertiesService に設定してください（下記 README 参照）
 
-// カロリー・栄養素の1日の目標値
+// カロリー・栄養素の1日の目標値（※サンプル値です。自分の目標に変更してください）
 const TARGET = {
-  kcal: 1600,
-  p: 80,
-  f: 50,
-  c: 200,
-  weight: 55.0  // 目標体重 (kg)
+  kcal: 2000,
+  p: 100,
+  f: 60,
+  c: 250,
+  weight: 65.0  // 目標体重 (kg)
 };
 
 // プロフィール
 const PROFILE = {
-  name: "User"  // Geminiレポートで使用される名前
+  name: "User",       // Geminiレポートで使用される名前
+  persona: "なかやまきんに君" // AIコメントのペルソナ（自由に変更可）
 };
 
-// 身長（m）
-const HEIGHT_M = 1.60;
+// 身長（m）（※サンプル値です。自分の身長に変更してください）
+const HEIGHT_M = 1.70;
 
 // スプレッドシートのシート名
 const SHEETS = {
@@ -29,7 +30,8 @@ const SHEETS = {
   DEBUG:  'Debug'        // デバッグログシート名
 };
 
-// デイリーレポートを投稿するSlackチャンネル名（例: "general"）
+// デイリー/ウィークリーレポートを投稿するSlackチャンネル名（例: "general"）
+// ※ CHANNEL_IDS はチャンネルIDを使用するが、こちらはチャンネル名で指定する点に注意
 const REPORT_CHANNEL = 'diet-general';
 
 // 食事・体重を投稿するSlackチャンネルのチャンネルID
@@ -70,7 +72,7 @@ function doPost(e) {
 
   const event = data.event;
 
-  if (event && event.bot_id) return;
+  if (event && event.bot_id) return ContentService.createTextOutput("bot ignored");
 
   if (!event || event.type !== "message" || event.subtype === "message_changed") {
     return ContentService.createTextOutput("ignored");
@@ -80,10 +82,15 @@ function doPost(e) {
     return ContentService.createTextOutput("duplicate ignored");
   }
 
-  if (event.channel === CHANNEL_IDS.FOOD) {
-    handleMealLog(event);
-  } else if (event.channel === CHANNEL_IDS.WEIGHT) {
-    handleWeightLog(event);
+  // エラーが起きても必ず200を返してSlackのリトライを防ぐ
+  try {
+    if (event.channel === CHANNEL_IDS.FOOD) {
+      handleMealLog(event);
+    } else if (event.channel === CHANNEL_IDS.WEIGHT) {
+      handleWeightLog(event);
+    }
+  } catch (err) {
+    logToSheet("doPost error: " + err.toString());
   }
 
   return ContentService.createTextOutput(JSON.stringify({ status: "ok" }))
@@ -159,7 +166,7 @@ function callGeminiApi(text, imageBlob, isAnalysis) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const prompt = isAnalysis
-    ? `栄養士として食事解析。1人前特定→数量計算→合計値を算出。回答はJSONのみ。{"item":"料理名","kcal":0,"p":0,"f":0,"c":0} 入力:${text}`
+    ? `栄養士として食事解析。1人前特定→数量計算→合計値を算出。入力:${text}`
     : text;
 
   const parts = [{ text: prompt }];
@@ -173,10 +180,30 @@ function callGeminiApi(text, imageBlob, isAnalysis) {
     });
   }
 
+  const requestBody = { contents: [{ parts }] };
+
+  if (isAnalysis) {
+    // responseSchema で JSON を強制し、正規表現パースを不要にする
+    requestBody.generationConfig = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          item: { type: "STRING" },
+          kcal: { type: "NUMBER" },
+          p:    { type: "NUMBER" },
+          f:    { type: "NUMBER" },
+          c:    { type: "NUMBER" }
+        },
+        required: ["item", "kcal", "p", "f", "c"]
+      }
+    };
+  }
+
   const res = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify({ contents: [{ parts }] }),
+    payload: JSON.stringify(requestBody),
     muteHttpExceptions: true
   });
 
@@ -184,13 +211,7 @@ function callGeminiApi(text, imageBlob, isAnalysis) {
 
   if (json?.candidates?.length > 0) {
     const resultText = json.candidates[0].content.parts[0].text;
-
-    if (isAnalysis) {
-      const match = resultText.match(/\{[\s\S]*?\}/);
-      return JSON.parse(match ? match[0] : '{"item":"Error","kcal":0,"p":0,"f":0,"c":0}');
-    }
-
-    return resultText;
+    return isAnalysis ? JSON.parse(resultText) : resultText;
   }
 
   logToSheet("API Response Error: " + res.getContentText());
@@ -216,7 +237,7 @@ function sendSummary(type) {
       ? weightSheet.getRange(weightSheet.getLastRow(), 2).getValue()
       : "不明";
 
-    const evalPrompt = `あなたは日本で一番優秀な栄養士です。なかやまきんに君になりきってください。ポジティブだけど的確なアドバイスをください。「**」のようなノイズが入ってしまうので、ボールド体などは使わずに、視覚的にわかりやすい構成で、400字程度でレポートを出力してください。ユーザー名: ${PROFILE.name}。現在体重: ${lastWeight}kg。目標: ${JSON.stringify(TARGET)} 実績: ${JSON.stringify(data.stats)}に対して、一日分の振り返りを行い、次に活かせるようなアドバイスにしてください。`;
+    const evalPrompt = `あなたは日本で一番優秀な栄養士です。${PROFILE.persona}になりきってください。ポジティブだけど的確なアドバイスをください。「**」のようなノイズが入ってしまうので、ボールド体などは使わずに、視覚的にわかりやすい構成で、400字程度でレポートを出力してください。ユーザー名: ${PROFILE.name}。現在体重: ${lastWeight}kg。目標: ${JSON.stringify(TARGET)} 実績: ${JSON.stringify(data.stats)}に対して、一日分の振り返りを行い、次に活かせるようなアドバイスにしてください。`;
 
     const evaluation = callGeminiApi(evalPrompt, null, false);
 
@@ -227,10 +248,17 @@ function sendSummary(type) {
       `Weight: ${lastWeight}kg\n\n` +
       `【Comments】\n${evaluation}`;
   } else {
+    const avgKcal = (data.stats.kcal / (data.countDays || 1)).toFixed(0);
+    const avgP    = (data.stats.p    / (data.countDays || 1)).toFixed(1);
+    const avgF    = (data.stats.f    / (data.countDays || 1)).toFixed(1);
+    const avgC    = (data.stats.c    / (data.countDays || 1)).toFixed(1);
+    const success = calculateSuccessDays(data.rawRows);
+
     message =
-      `【${type} Report】\n` +
-      `Avg kcal: ${(data.stats.kcal / (data.countDays || 1)).toFixed(0)}\n` +
-      `Success days: ${calculateSuccessDays(data.rawRows)}`;
+      `【Weekly Report】\n` +
+      `Avg kcal: ${avgKcal} / ${TARGET.kcal}\n` +
+      `Avg PFC: P${avgP} F${avgF} C${avgC}\n` +
+      `Success days: ${success} / ${data.countDays}`;
   }
 
   UrlFetchApp.fetch("https://slack.com/api/chat.postMessage", {

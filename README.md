@@ -1,13 +1,18 @@
 # slack-calorie-tracker
 
-Slackに食事の写真やテキストを投稿するだけで、Gemini AIがカロリー・PFCを自動計算しスプレッドシートに記録。毎日夜になかやまきんに君風のコメント付きデイリーレポートをSlackに投稿するGoogle Apps Script (GAS)ツールです。
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Platform](https://img.shields.io/badge/platform-Google%20Apps%20Script-blue?logo=google)
+![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Gemini%20AI-8E75B2?logo=google&logoColor=white)
+
+Slackに食事の写真やテキストを投稿するだけで、Gemini AIがカロリー・PFCを自動計算しスプレッドシートに記録。毎日夜にAIコメント付きデイリーレポートをSlackに投稿するGoogle Apps Script (GAS)ツールです。
 
 ## 機能
 
 - **食事ログ**：Slackに食事テキスト or 画像を投稿 → Geminiが自動でカロリー・PFC（タンパク質・脂質・炭水化物）を解析してスプレッドシートに記録
 - **体重ログ**：Slackに体重を投稿（例：`52.5kg 18.0%`）→ BMI・目標差を計算して記録
-- **デイリーレポート**：毎日定時に実績 vs 目標を集計し、なかやまきんに君風AIコメント付きでSlackに投稿
-- **ウィークリーレポート**：週次で平均カロリーと目標達成日数を集計して投稿
+- **デイリーレポート**：毎日定時に実績 vs 目標を集計し、AIコメント付きでSlackに投稿
+- **ウィークリーレポート**：週次で平均カロリー・PFC・目標達成日数を集計して投稿
 
 ## 必要なもの
 
@@ -61,10 +66,12 @@ https://docs.google.com/spreadsheets/d/【ここがID】/edit
 3. ファイル冒頭の **ユーザー設定セクション** を自分の値に変更：
 
 ```javascript
-const TARGET = { kcal: 1600, p: 80, f: 50, c: 200, weight: 55.0 };
-const PROFILE = { name: "YourName" };
-const HEIGHT_M = 1.60;
+// ※ 以下はサンプル値です。自分の目標・身長に書き換えてください
+const TARGET = { kcal: 2000, p: 100, f: 60, c: 250, weight: 65.0 };
+const PROFILE = { name: "YourName", persona: "なかやまきんに君" }; // persona は自由に変更可
+const HEIGHT_M = 1.70;
 const SHEETS = { FOOD: 'food-log', WEIGHT: 'weight-log', DEBUG: 'Debug' };
+// REPORT_CHANNEL はチャンネル名、CHANNEL_IDS はチャンネルIDで指定（両者で形式が異なる点に注意）
 const REPORT_CHANNEL = 'diet-general';
 const CHANNEL_IDS = { FOOD: 'C000000000', WEIGHT: 'C000000001' };
 ```
@@ -100,6 +107,18 @@ GASエディタ → **トリガー（時計アイコン）** → トリガーを
 | 時間ベースのトリガーのタイプ | 日付ベースのタイマー |
 | 時刻 | 午後9時〜10時（お好みで） |
 
+### 7. ウィークリーレポートのトリガー設定（任意）
+
+同じくトリガーを追加：
+
+| 項目 | 設定 |
+|---|---|
+| 実行する関数 | `sendWeeklyReport` |
+| イベントのソース | 時間主導型 |
+| 時間ベースのトリガーのタイプ | 週ベースのタイマー |
+| 曜日 | 日曜日（お好みで） |
+| 時刻 | 午後9時〜10時（お好みで） |
+
 ## 使い方
 
 ### 食事を記録する
@@ -116,28 +135,39 @@ GASエディタ → **トリガー（時計アイコン）** → トリガーを
 体重ログ用チャンネルに投稿します。
 
 ```
-52.3kg 18.5%
+72.5kg 18.5%
 ```
-体重のみでも記録できます（`52.3`）。
+体重のみでも記録できます（`72.5`）。
 
 ### デイリーレポートのサンプル
 
 ```
 【Daily Report】
-Energy: 1423 / 1600
-PFC: P82.3 F38.1 C178.4
-Weight: 52.3kg
+Energy: 1850 / 2000
+PFC: P98.3 F55.1 C238.4
+Weight: 72.5kg
 
 【Comments】
 〇〇さん、今日もよく頑張りました！
-タンパク質は目標をクリア、素晴らしい！
-カロリーは目標内に収まっていますが...（以下、なかやまきんに君風コメント）
+タンパク質は目標をクリア、素晴らしいです！
+カロリーも目標内に収まっていますね。
+（AIペルソナによるアドバイスが続きます）
+```
+
+### ウィークリーレポートのサンプル
+
+```
+【Weekly Report】
+Avg kcal: 1920 / 2000
+Avg PFC: P95.2 F52.8 C235.1
+Success days: 5 / 7
 ```
 
 ## ファイル構成
 
 ```
-Code.gs  ── メインスクリプト（全機能）
+Code.gs     ── メインスクリプト（全機能）
+README.md   ── セットアップガイド
 ```
 
 ## 注意事項
@@ -145,3 +175,8 @@ Code.gs  ── メインスクリプト（全機能）
 - Gemini APIの無料枠（2025年時点）: 1日1500リクエストまで無料
 - GASのトリガーは日本時間（JST）で動作します
 - 食事の日付境界はAM4:00に設定しています（深夜の食事を前日分として集計）
+- APIキー・トークン・スプレッドシートIDはコードに直書きせず、必ずスクリプトプロパティに設定してください
+
+## ライセンス
+
+[MIT License](LICENSE)
