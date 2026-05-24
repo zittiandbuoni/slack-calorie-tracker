@@ -5,14 +5,41 @@
 ![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)
 ![Gemini AI](https://img.shields.io/badge/Gemini%20AI-8E75B2?logo=google&logoColor=white)
 
-Slackに食事の写真やテキストを投稿するだけで、Gemini AIがカロリー・PFCを自動計算しスプレッドシートに記録。毎日夜にAIコメント付きデイリーレポートをSlackに投稿するGoogle Apps Script (GAS)ツールです。
+Slackに食事の写真やテキストを投稿するだけで、Gemini AIがカロリー・PFCを自動計算しスプレッドシートに記録。毎日夜に**なかやまきんに君風AIコメント**付きデイリーレポートをSlackに届けるGoogle Apps Script (GAS)ツールです。
+
+> 「筋肉は裏切らない！そして、このツールも裏切らない！」
 
 ## 機能
 
 - **食事ログ**：Slackに食事テキスト or 画像を投稿 → Geminiが自動でカロリー・PFC（タンパク質・脂質・炭水化物）を解析してスプレッドシートに記録
-- **体重ログ**：Slackに体重を投稿（例：`52.5kg 18.0%`）→ BMI・目標差を計算して記録
-- **デイリーレポート**：毎日定時に実績 vs 目標を集計し、AIコメント付きでSlackに投稿
+- **体重ログ**：Slackに体重を投稿（例：`72.5kg 18.0%`）→ BMI・目標差を計算して記録
+- **デイリーレポート**：毎日定時に実績 vs 目標を集計し、なかやまきんに君風AIコメント付きでSlackに投稿
 - **ウィークリーレポート**：週次で平均カロリー・PFC・目標達成日数を集計して投稿
+
+## デイリーレポートのサンプル
+
+```
+【Daily Report】
+Energy: 1850 / 2000
+PFC: P98.3 F55.1 C238.4
+Weight: 72.5kg
+
+【Comments】
+〇〇さん、今日も筋肉と向き合ってくれて、ありがとうございます！
+タンパク質はしっかりクリア、素晴らしいです！
+カロリーも目標内に収まっていますね。
+ただ、脂質がやや多め。明日は揚げ物より蒸し鶏を選んでみましょう。
+筋肉は裏切らない！継続こそが最高のトレーニングです！
+```
+
+AIコメントのペルソナは `PROFILE.persona` を変更すれば自由にカスタマイズできます。お気に入りのキャラを設定してみてください。
+
+```javascript
+const PROFILE = {
+  name: "YourName",
+  persona: "なかやまきんに君"  // ← 好きなキャラ・人物に変えてOK
+};
+```
 
 ## 必要なもの
 
@@ -68,7 +95,7 @@ https://docs.google.com/spreadsheets/d/【ここがID】/edit
 ```javascript
 // ※ 以下はサンプル値です。自分の目標・身長に書き換えてください
 const TARGET = { kcal: 2000, p: 100, f: 60, c: 250, weight: 65.0 };
-const PROFILE = { name: "YourName", persona: "なかやまきんに君" }; // persona は自由に変更可
+const PROFILE = { name: "YourName", persona: "なかやまきんに君" };
 const HEIGHT_M = 1.70;
 const SHEETS = { FOOD: 'food-log', WEIGHT: 'weight-log', DEBUG: 'Debug' };
 // REPORT_CHANNEL はチャンネル名、CHANNEL_IDS はチャンネルIDで指定（両者で形式が異なる点に注意）
@@ -138,21 +165,6 @@ GASエディタ → **トリガー（時計アイコン）** → トリガーを
 72.5kg 18.5%
 ```
 体重のみでも記録できます（`72.5`）。
-
-### デイリーレポートのサンプル
-
-```
-【Daily Report】
-Energy: 1850 / 2000
-PFC: P98.3 F55.1 C238.4
-Weight: 72.5kg
-
-【Comments】
-〇〇さん、今日もよく頑張りました！
-タンパク質は目標をクリア、素晴らしいです！
-カロリーも目標内に収まっていますね。
-（AIペルソナによるアドバイスが続きます）
-```
 
 ### ウィークリーレポートのサンプル
 
