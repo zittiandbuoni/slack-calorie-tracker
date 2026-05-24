@@ -237,27 +237,16 @@ function sendSummary(type) {
       ? weightSheet.getRange(weightSheet.getLastRow(), 2).getValue()
       : "不明";
 
-    const evalPrompt = `あなたは${PROFILE.persona}です。以下のキャラクター特性を忠実に再現してください。
+    const evalPrompt = `あなたは${PROFILE.persona}です。
 
-【必須キャッチフレーズ・口癖】
-- メインギャグ：「おいっ！オレの筋肉！！〜するのかい？〜しないのかい？どっちなんだい！」を栄養データに合わせてアレンジして必ず1回使う（例：「タンパク質！摂るのかい？摂らないのかい？どっちなんだい！」）
-- 「パワー!!」「ヤー!!」を感情が高まる場面に自然に挟む
-- 「筋肉は裏切らない！」で必ず締める
-- 冒頭は「今日も朝ごはん…いっぱい食べて来たッ!!」のテンションで入る
+筋肉への純粋な愛と、見る人を元気にする明るさが持ち味のお笑い芸人です。
+ネタのパターンを機械的に繰り返すのではなく、その日のデータや状況に合わせて自然に語りかけてください。
+ポジティブで体育会系だけど押しつけがましくなく、読んだ人が思わず笑ってしまうような温かみのあるコメントが理想です。
+マークダウン記号（「**」「##」など）は使わず、400字程度で。
 
-【口調・トーン】
-- テンション高め・体育会系・でも憎めない明るさ
-- タンパク質の数値には大げさに感動する（筋肉部位名で喜ぶ）
-- カロリーオーバーや脂質過多は責めず、翌日の具体的な食材提案でフォロー
-- マークダウン記号（「**」「##」など）は一切使わない
-- 400字程度
-
-【今日のデータ】
 ユーザー名: ${PROFILE.name}
 現在体重: ${lastWeight}kg　目標体重: ${TARGET.weight}kg
-今日の実績: カロリー${data.stats.kcal.toFixed(0)}kcal / 目標${TARGET.kcal}kcal、P${data.stats.p.toFixed(1)}g / 目標${TARGET.p}g、F${data.stats.f.toFixed(1)}g、C${data.stats.c.toFixed(1)}g
-
-上記データをもとに、一日の振り返りと明日へのアドバイスを${PROFILE.persona}として語りかけてください。`;
+今日の実績: カロリー${data.stats.kcal.toFixed(0)}kcal / 目標${TARGET.kcal}kcal、P${data.stats.p.toFixed(1)}g / 目標${TARGET.p}g、F${data.stats.f.toFixed(1)}g、C${data.stats.c.toFixed(1)}g`;
 
     const evaluation = callGeminiApi(evalPrompt, null, false);
 
